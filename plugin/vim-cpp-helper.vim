@@ -1,18 +1,18 @@
 command! -complete=dir -nargs=1 Class  :call Class("<args>", 0)
 command! -complete=dir -nargs=1 QClass :call Class("<args>", 1)
 
-"command! MethodPublic    -complete=tag -nargs=+
-"command! MethodProtected -complete=tag -nargs=+
-"command! MethodPrivate   -complete=tag -nargs=+
-"
-"command! SlotPublic      -complete=tag -nargs=+
-"command! SlotProtected   -complete=tag -nargs=+
-"command! SlotPrivate     -complete=tag -nargs=+
-"command! QSignal         -complete=tag -nargs=+
-"
-"command! Constructor     -nargs=0
-"command! ConstructorCopy -nargs=0
-"command! ConstructorMove -nargs=0
+command! -complete=tag -nargs=+ MethodPublic    :call Method("<args>", "public:")
+command! -complete=tag -nargs=+ MethodProtected :call Method("<args>", "protected:")
+command! -complete=tag -nargs=+ MethodPrivate   :call Method("<args>", "private:")
+
+command! -complete=tag -nargs=+ SlotPublic      :call Method("<args>", "public slots:")
+command! -complete=tag -nargs=+ SlotProtected   :call Method("<args>", "protected slots:")
+command! -complete=tag -nargs=+ SlotPrivate     :call Method("<args>", "private slots:")
+command! -complete=tag -nargs=+ QSignal         :call Method("<args>", "signals:")
+
+"command! -nargs=0               Constructor     :call 
+"command! -nargs=0               ConstructorCopy :call 
+"command! -nargs=0               ConstructorMove :call 
 
 let g:header_extension = ".h"
 let g:object_extension = ".cpp"
@@ -45,21 +45,16 @@ endfun
 
 
 fun! s:add_inclusion_guard(name) abort
-	let startpos = getpos(".")
-	normal! gg
-
 	if g:inclusion_guard_flavour == 0
 		" use pragma inclusion guard
-		exec "normal! O#pragma once\<c-c>"
+		call append(0, "#pragma once")
 	else
 		" use ifndef guard
 		let guard_name = printf(g:inclusion_guard_format, a:name)
-		exec "normal! O#ifndef " . guard_name . "\<cr>#define " . guard_name . "\<c-c>"
-		exec "normal! Go\<cr>#endif //" . guard_name. "\<c-c>"
+		call append(0, "#ifndef " . guard_name)
+		call append(0, "#define " . guard_name)
+		call append(line("$"), "#endif //" . guard_name)
 	endif
-
-	" return to where we started
-	call setpos(".", startpos)
 endfun
 
 
@@ -95,7 +90,7 @@ fun! s:add_brackets(is_class, ...) abort
 endfun
 
 
-fun! s:new_line_indent(string, level)
+fun! s:new_line_indent(string, level) abort
 	exec "normal! o" . a:string . "\<c-c>>>0dt" . a:string[0]
 	let i = 0
 	while i < a:level
@@ -180,5 +175,56 @@ fun! Class(classpath, qt_flavour) abort
 		exec "bdelete" . header_buffer
 		exec "bdelete" . object_buffer
 	endif
+endfun
 
+
+" positions at the end of the scope block
+fun! s:find_scope_place(scope_name) abort
+	let scopes_re = '\(public:\|private:\|protected:\|public slots:\|private slots:\|protected slots:\|signals:\|^}\)'
+	let found = search(a:scope_name)
+	if !found
+		echoerr "Could not find scope: ", a:scope_name
+	endif
+	let found = search(scopes_re)
+	if !found
+		echoerr "Could not find end of scope: ", a:scope_name
+	endif
+	normal! kk
+	return found -= 2
+endfun
+
+
+fun! Method(funcarg, scope) abort
+	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
+
+	let parsed      = matchlist(a:funcarg, funcarg_re)
+	let return_type = parsed[1]
+	let other       = parsed[2]
+
+	"find out the class we're in: file name without extension
+	let classname = expand("%:t:r")
+
+	"add method to header
+	let filename = expand("%:p:r") . '.h'
+	exec "edit " . filename
+	call s:find_scope_place(a:scope)
+	exec "normal! o\<cr>" . a:funcarg . ";"
+
+	"add method to realisation file
+	let filename = expand("%:p:r") . '.cpp'
+	exec "edit " . filename
+	exec "normal! Go\<cr>" . return_type . " " . classname . "::" . other . "\<cr>{\<cr>}"
+endfun
+
+fun!
+	"                return type             name               parameters                  qualifiers
+	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\)' . '\s*(' . '\([^)]*\)' . ')\s*' . '\(\%(\k\|\s\)*\)'
+
+	let parsed = matchlist(a:funcarg, funcarg_re)
+
+	let return_type = parsed[1]
+	let func_name   = parsed[2]
+	let params      = parsed[3]
+	let qualifiers  = parsed[4]
+	
 endfun
