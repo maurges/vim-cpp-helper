@@ -14,8 +14,13 @@ command! -complete=tag -nargs=+ QSignal         :call Method("<args>", "signals:
 "command! -nargs=0               ConstructorCopy :call 
 "command! -nargs=0               ConstructorMove :call 
 
+command! -nargs=0 Implement        :call Implement()
+command! -nargs=0 DeclarePublic    :call Declare("public:")
+command! -nargs=0 DeclarePrivate   :call Declare("private:")
+command! -nargs=0 DeclareProtected :call Declare("protected:")
+
 let g:header_extension = ".h"
-let g:object_extension = ".cpp"
+let g:source_extension = ".cpp"
 
 " 0 for pragma once, else for ifndef
 let g:inclusion_guard_flavour = 0
@@ -104,7 +109,7 @@ fun! Class(classpath, qt_flavour) abort
 	let cwd = getcwd() . "/"
 
 	" check if files for the class are not occupied. May raise an error
-	let exts = [g:header_extension, g:object_extension]
+	let exts = [g:header_extension, g:source_extension]
 	if s:check_exists(cwd . a:classpath, exts, "creare class " . a:classpath)
 		echoerr "Could not create class"
 		return
@@ -157,7 +162,7 @@ fun! Class(classpath, qt_flavour) abort
 	" add object file
 
 	" create file
-	exec "edit " . cwd . a:classpath . g:object_extension
+	exec "edit " . cwd . a:classpath . g:source_extension
 	"remember the buffer for the file
 	let object_buffer = bufnr("%")
 
@@ -179,45 +184,116 @@ endfun
 
 
 " positions at the end of the scope block
+" returns whether scope is empty
 fun! s:find_scope_place(scope_name) abort
 	let scopes_re = '\(public:\|private:\|protected:\|public slots:\|private slots:\|protected slots:\|signals:\|^}\)'
-	let found = search(a:scope_name)
-	if !found
-		echoerr "Could not find scope: ", a:scope_name
+	let scope_begin = search(a:scope_name)
+	if !scope_begin
+		echoerr "Could not find scope: " a:scope_name
 	endif
-	let found = search(scopes_re)
-	if !found
-		echoerr "Could not find end of scope: ", a:scope_name
+	let scope_end = search(scopes_re)
+	if !scope_end
+		echoerr "Could not find end of scope: " a:scope_name
 	endif
 	normal! kk
-	return found -= 2
+
+	return scope_end - scope_begin == 2
+endfun
+
+
+fun! s:add_declaration(scope, funcarg) abort
+	"find out path to header file: current file full path with correct extension
+	let filename = expand("%:p:r") . g:header_extension
+
+	exec "edit " . filename
+	let empty = s:find_scope_place(a:scope)
+	if empty
+		exec "normal! o" . a:funcarg . ";"
+	else
+		exec "normal! o\<cr>" . a:funcarg . ";"
+	endif
+	write
+endfun
+
+
+fun! s:add_implementation(return_type, other_declaration) abort
+	"find out the class we're in: file name without extension
+	let classname = expand("%:t:r")
+	"find out path to header file: current file full path with correct extension
+	let filename = expand("%:p:r") . g:source_extension
+	exec "edit " . filename
+
+	"find the line where last function ends
+	let l = line("$")
+	while getline(l) !~ '}\|#include' | let l -= 1 | endwhile
+	"set position to l, 0 for current buffer
+	call setpos(".", [0, l, 0, 0])
+
+	"add empty implementation
+	exec "normal! o\<cr>\<cr>" . a:return_type . " " . classname . "::" . a:other_declaration . "\<cr>{\<cr>}"
+	write
+
+	"set position to start of function
+	call setpos(".", [0, l+4, 0, 0])
 endfun
 
 
 fun! Method(funcarg, scope) abort
+	"                  return type            everything else
 	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
 
 	let parsed      = matchlist(a:funcarg, funcarg_re)
+
+	if parsed == []
+		echoerr "Could not parse the function!"
+	endif
+
 	let return_type = parsed[1]
 	let other       = parsed[2]
 
-	"find out the class we're in: file name without extension
-	let classname = expand("%:t:r")
-
-	"add method to header
-	let filename = expand("%:p:r") . '.h'
-	exec "edit " . filename
-	call s:find_scope_place(a:scope)
-	exec "normal! o\<cr>" . a:funcarg . ";"
-
-	"add method to realisation file
-	let filename = expand("%:p:r") . '.cpp'
-	exec "edit " . filename
-	exec "normal! Go\<cr>" . return_type . " " . classname . "::" . other . "\<cr>{\<cr>}"
+	call s:add_declaration(a:scope, a:funcarg)
+	call s:add_implementation(return_type, other)
 endfun
 
-fun!
-	"                return type             name               parameters                  qualifiers
+
+fun! Implement() abort
+	"             indent   return type            everything else
+	let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)' . ';'
+
+	let line = getline(line("."))
+	let parsed = matchlist(line, func_re)
+
+	if parsed == []
+		echoerr "Could not parse the function in the line!"
+	endif
+
+	let return_type = parsed[1]
+	let other       = parsed[2]
+
+	call s:add_implementation(return_type, other)
+endfun
+
+
+fun! Declare(scope) abort
+	"                      return type              class name     everything else
+	let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
+
+	let line = getline(line("."))
+	let parsed = matchlist(line, func_re)
+
+	if parsed == []
+		echoerr "Could not parse the function in the line!"
+	endif
+
+	let return_type = parsed[1]
+	let other       = parsed[2]
+
+	call s:add_declaration(a:scope, return_type.' '.other)
+endfun
+
+
+fun! ArgType(funcarg)
+	"                  return type              name                parameters                qualifiers
 	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\)' . '\s*(' . '\([^)]*\)' . ')\s*' . '\(\%(\k\|\s\)*\)'
 
 	let parsed = matchlist(a:funcarg, funcarg_re)
