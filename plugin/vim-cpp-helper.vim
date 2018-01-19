@@ -35,6 +35,9 @@ let g:wipe_buffers = 1
 " 0 for not indented, else for indented
 let g:indented_scope_markers = 0
 
+let g:declaration_offset = 1
+let g:implementation_offset = 2
+
 
 fun! s:check_exists(path, extensions, action) abort
 	for ext in a:extensions
@@ -210,7 +213,7 @@ fun! s:add_declaration(scope, funcarg) abort
 	if empty
 		exec "normal! o" . a:funcarg . ";"
 	else
-		exec "normal! o\<cr>" . a:funcarg . ";"
+		exec "normal! o" . repeat("\<cr>", g:declaration_offset) . a:funcarg . ";"
 	endif
 	write
 endfun
@@ -230,7 +233,7 @@ fun! s:add_implementation(return_type, other_declaration) abort
 	call setpos(".", [0, l, 0, 0])
 
 	"add empty implementation
-	exec "normal! o\<cr>\<cr>" . a:return_type . " " . classname . "::" . a:other_declaration . "\<cr>{\<cr>}"
+	exec "normal! o" . repeat("\<cr>", g:implementation_offset) . a:return_type . " " . classname . "::" . a:other_declaration . "\<cr>{\<cr>}"
 	write
 
 	"set position to start of function
