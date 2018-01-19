@@ -1,5 +1,5 @@
-command! -complete=dir -nargs=1 Class  :call Class("<args>", 0)
-command! -complete=dir -nargs=1 QClass :call Class("<args>", 1)
+command! -complete=file -nargs=1 Class  :call Class("<args>", 0)
+command! -complete=file -nargs=1 QClass :call Class("<args>", 1)
 
 command! -complete=tag -nargs=+ MethodPublic    :call Method("<args>", "public:")
 command! -complete=tag -nargs=+ MethodProtected :call Method("<args>", "protected:")
@@ -10,9 +10,9 @@ command! -complete=tag -nargs=+ SlotProtected   :call Method("<args>", "protecte
 command! -complete=tag -nargs=+ SlotPrivate     :call Method("<args>", "private slots:")
 command! -complete=tag -nargs=+ QSignal         :call Method("<args>", "signals:")
 
-"command! -nargs=0               Constructor     :call 
-"command! -nargs=0               ConstructorCopy :call 
-"command! -nargs=0               ConstructorMove :call 
+command! -nargs=* Constructor      :call Constructor("public:", "basic", "<args>")
+command! -nargs=0 ConstructorCopy  :call Constructor("public:", "copy", "")
+command! -nargs=0 ConstructorMove  :call Constructor("public:", "move", "")
 
 command! -nargs=0 Implement        :call Implement()
 command! -nargs=0 DeclarePublic    :call Declare("public:")
@@ -83,6 +83,7 @@ fun! s:add_brackets(is_class, ...) abort
 		let cmd .= "A\<space>{"
 	else
 		echoerr "Unsupported style supplied to bracker adding: ", style
+		throw "cpp-helper-error"
 	endif
 
 	" add closing bracket
@@ -193,10 +194,12 @@ fun! s:find_scope_place(scope_name) abort
 	let scope_begin = search(a:scope_name)
 	if !scope_begin
 		echoerr "Could not find scope: " a:scope_name
+		throw "cpp-helper-error"
 	endif
 	let scope_end = search(scopes_re)
 	if !scope_end
 		echoerr "Could not find end of scope: " a:scope_name
+		throw "cpp-helper-error"
 	endif
 	normal! kk
 
@@ -249,6 +252,7 @@ fun! Method(funcarg, scope) abort
 
 	if parsed == []
 		echoerr "Could not parse the function!"
+		throw "cpp-helper-error"
 	endif
 
 	let return_type = parsed[1]
@@ -261,19 +265,24 @@ endfun
 
 fun! Implement() abort
 	"             indent   return type            everything else
-	let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)' . ';'
+	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+\|\)' . '\(\k\+\s*(.*\)' . ';'
 
 	let line = getline(line("."))
 	let parsed = matchlist(line, func_re)
 
 	if parsed == []
 		echoerr "Could not parse the function in the line!"
+		throw "cpp-helper-error"
 	endif
 
 	let return_type = parsed[1]
 	let other       = parsed[2]
 
-	call s:add_implementation(return_type, other)
+	if return_type == ''
+		call s:implement_constructor(other)
+	else
+		call s:add_implementation(return_type, other)
+	endif
 endfun
 
 
@@ -286,12 +295,41 @@ fun! Declare(scope) abort
 
 	if parsed == []
 		echoerr "Could not parse the function in the line!"
+		throw "cpp-helper-error"
 	endif
 
 	let return_type = parsed[1]
 	let other       = parsed[2]
 
 	call s:add_declaration(a:scope, return_type.' '.other)
+endfun
+
+
+fun! s:implement_constructor(funcarg) abort
+
+endfun
+
+
+fun! Constructor(scope, type, args) abort
+	let classname = expand("%:t:r")
+
+	"write correct argument for declaring and implementing
+	if type == "copy"
+		let args = "const " . classname . "&"
+	elseif type == "move"
+		let args = classname . "&&"
+	else
+		"take arguments supplied, strip them of braces (why did i do this?)
+		if len(a:args) > 2 && a:args[0] == "(" && a:args[-1:-1] == ")"
+			let args = a:args[1:-2]
+		else
+			let args = a:args
+		endif
+	endif
+
+	let funcarg = classname . "(" . args . ")"
+	call s:add_declaration(a:scope, funcarg)
+	call s:implement_constructor(funcarg)
 endfun
 
 
@@ -305,5 +343,4 @@ fun! ArgType(funcarg)
 	let func_name   = parsed[2]
 	let params      = parsed[3]
 	let qualifiers  = parsed[4]
-	
 endfun
