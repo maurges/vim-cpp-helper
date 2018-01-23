@@ -15,7 +15,7 @@ All the functionality of the plugin is in those commands, have a look.
 
 Use to create an empty class and corresponding files:
 ```
-:Class path/classname
+	:Class path/classname
 ```
 Path is used like a system path, it can be global or relative. Most useful
 with relative paths to create classes in the project. As is everywhere in vim,
@@ -27,7 +27,7 @@ When you're writing a qt project in vim, it would be useful to create classes
 with qt stuff in them already, and the following command will help you. Use it
 like the command above:
 ```
-:QClass path/QClassName
+	:QClass path/QClassName
 ```
 
 To create methods use the following commands:
