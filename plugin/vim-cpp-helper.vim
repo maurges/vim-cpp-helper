@@ -1,5 +1,6 @@
 " Description: A collection of commands to create c++ and qt classes less
 " painfully
+" Author: d86leader (d86leader@github.com) 2018-2018
 
 
 let s:save_cpo = &cpo
@@ -25,7 +26,6 @@ command! -complete=tag -nargs=+ MethodPrivate   :call CppHelperMethod("<args>", 
 command! -complete=tag -nargs=+ SlotPublic      :call CppHelperMethod("<args>", "public slots:")
 command! -complete=tag -nargs=+ SlotProtected   :call CppHelperMethod("<args>", "protected slots:")
 command! -complete=tag -nargs=+ SlotPrivate     :call CppHelperMethod("<args>", "private slots:")
-command! -complete=tag -nargs=+ QSignal         :call CppHelperMethod("<args>", "signals:")
 
 command! -nargs=* Constructor      :call CppHelperConstructor("public:", "basic", "<args>")
 command! -nargs=0 ConstructorCopy  :call CppHelperConstructor("public:", "copy", "")
@@ -38,7 +38,9 @@ command! -nargs=0 DeclareProtected :call CppHelperDeclare("protected:")
 
 
 
-" setting default variables
+" Setting default variables
+
+
 if !exists('g:cpp_helper_header_extension')
 	let g:cpp_helper_header_extension = ".h"
 endif
@@ -102,7 +104,8 @@ fun! s:open_in_tab(name) abort
 endfun
 
 
-fun! s:check_exists(path, extensions, action) abort
+" check if files starting with path exist
+fun! s:check_exist(path, extensions, action) abort
 	for ext in a:extensions
 		if filereadable(a:path . ext)
 			let errmsg = "Can't " . a:action . ": file " . a:path .
@@ -177,7 +180,7 @@ fun! CppHelperClass(classpath, qt_flavour) abort
 
 	" check if files for the class are not occupied. May raise an error
 	let exts = [g:cpp_helper_header_extension, g:cpp_helper_source_extension]
-	if s:check_exists(cwd . a:classpath, exts, "creare class " . a:classpath)
+	if s:check_exist(cwd . a:classpath, exts, "creare class " . a:classpath)
 		echoerr "Could not create class"
 		return
 	endif
