@@ -1,45 +1,105 @@
-command! -complete=file -nargs=1 Class  :call Class("<args>", 0)
-command! -complete=file -nargs=1 QClass :call Class("<args>", 1)
+" Description: A collection of commands to create c++ and qt classes less
+" painfully
 
-command! -complete=tag -nargs=+ MethodPublic    :call Method("<args>", "public:")
-command! -complete=tag -nargs=+ MethodProtected :call Method("<args>", "protected:")
-command! -complete=tag -nargs=+ MethodPrivate   :call Method("<args>", "private:")
 
-command! -complete=tag -nargs=+ SlotPublic      :call Method("<args>", "public slots:")
-command! -complete=tag -nargs=+ SlotProtected   :call Method("<args>", "protected slots:")
-command! -complete=tag -nargs=+ SlotPrivate     :call Method("<args>", "private slots:")
-command! -complete=tag -nargs=+ QSignal         :call Method("<args>", "signals:")
+let s:save_cpo = &cpo
+set cpo&vim
 
-command! -nargs=* Constructor      :call Constructor("public:", "basic", "<args>")
-command! -nargs=0 ConstructorCopy  :call Constructor("public:", "copy", "")
-command! -nargs=0 ConstructorMove  :call Constructor("public:", "move", "")
+if exists('g:loaded_vim_cpp_helper') && !exists('g:force_reload_vim_cpp_helper')
+	finish
+endif
+let g:loaded_vim_cpp_helper = 1
 
-command! -nargs=0 Implement        :call Implement()
-command! -nargs=0 DeclarePublic    :call Declare("public:")
-command! -nargs=0 DeclarePrivate   :call Declare("private:")
-command! -nargs=0 DeclareProtected :call Declare("protected:")
 
-let g:header_extension = ".h"
-let g:source_extension = ".cpp"
+" Default variables
+
+
+" Commands availible
+command! -complete=file -nargs=1 Class  :call CppHelperClass("<args>", 0)
+command! -complete=file -nargs=1 QClass :call CppHelperClass("<args>", 1)
+
+command! -complete=tag -nargs=+ MethodPublic    :call CppHelperMethod("<args>", "public:")
+command! -complete=tag -nargs=+ MethodProtected :call CppHelperMethod("<args>", "protected:")
+command! -complete=tag -nargs=+ MethodPrivate   :call CppHelperMethod("<args>", "private:")
+
+command! -complete=tag -nargs=+ SlotPublic      :call CppHelperMethod("<args>", "public slots:")
+command! -complete=tag -nargs=+ SlotProtected   :call CppHelperMethod("<args>", "protected slots:")
+command! -complete=tag -nargs=+ SlotPrivate     :call CppHelperMethod("<args>", "private slots:")
+command! -complete=tag -nargs=+ QSignal         :call CppHelperMethod("<args>", "signals:")
+
+command! -nargs=* Constructor      :call CppHelperConstructor("public:", "basic", "<args>")
+command! -nargs=0 ConstructorCopy  :call CppHelperConstructor("public:", "copy", "")
+command! -nargs=0 ConstructorMove  :call CppHelperConstructor("public:", "move", "")
+
+command! -nargs=0 Implement        :call CppHelperImplement()
+command! -nargs=0 DeclarePublic    :call CppHelperDeclare("public:")
+command! -nargs=0 DeclarePrivate   :call CppHelperDeclare("private:")
+command! -nargs=0 DeclareProtected :call CppHelperDeclare("protected:")
+
+
+
+" setting default variables
+if !exists('g:cpp_helper_header_extension')
+	let g:cpp_helper_header_extension = ".h"
+endif
+if !exists('g:cpp_helper_source_extension')
+	let g:cpp_helper_source_extension = ".cpp"
+endif
 
 " 0 for pragma once, else for ifndef
-let g:inclusion_guard_flavour = 0
+if !exists('g:cpp_helper_inclusion_guard_flavour')
+	let g:cpp_helper_inclusion_guard_flavour = 0
+endif
 
-let g:inclusion_guard_format = "INCLUDED_%s"
+" format string for ifndef inclusion guard
+if !exists('g:cpp_helper_inclusion_guard_format')
+	let g:cpp_helper_inclusion_guard_format = "INCLUDED_%s"
+endif
 
 " 1 for true, 0 for bad
-let g:bracket_style = 1
+if !exists('g:cpp_helper_bracket_style')
+	let g:cpp_helper_bracket_style = 1
+endif
 
-"1 to go to header, 2 to return to where you started
-let g:after_creation = 1
+" 1 to go to header, 2 to return to where you started
+if !exists('g:cpp_helper_after_creation')
+	let g:cpp_helper_after_creation = 1
+endif
 
-let g:wipe_buffers = 1
+if !exists('g:cpp_helper_wipe_buffers')
+	let g:cpp_helper_wipe_buffers = 1
+endif
 
-" 0 for not indented, else for indented
-let g:indented_scope_markers = 0
+" sets the indent level of scope markers in class declaration
+if !exists('g:cpp_helper_scope_marker_indent')
+	let g:cpp_helper_scope_marker_indent = 0
+endif
 
-let g:declaration_offset = 1
-let g:implementation_offset = 2
+" the offset of function starts from other things
+if !exists('g:cpp_helper_declaration_offset')
+	let g:cpp_helper_declaration_offset = 1
+endif
+if !exists('g:cpp_helper_implementation_offset')
+	let g:cpp_helper_implementation_offset = 2
+endif
+
+
+" Functions
+
+
+" go to window containing file in current tab
+" open in current window if it doesnt exist
+fun! s:open_in_tab(name) abort
+	" window number for first buffer assosiated with name in current tab
+	let nr = bufwinnr(a:name)
+	if nr != -1
+		"go to window
+		exec nr . "wincmd w"
+	else
+		"simply open it in current window
+		exec "edit " . a:name
+	endif
+endfun
 
 
 fun! s:check_exists(path, extensions, action) abort
@@ -56,12 +116,12 @@ endfun
 
 
 fun! s:add_inclusion_guard(name) abort
-	if g:inclusion_guard_flavour == 0
+	if g:cpp_helper_inclusion_guard_flavour == 0
 		" use pragma inclusion guard
 		call append(0, "#pragma once")
 	else
 		" use ifndef guard
-		let guard_name = printf(g:inclusion_guard_format, a:name)
+		let guard_name = printf(g:cpp_helper_inclusion_guard_format, a:name)
 		call append(0, "#ifndef " . guard_name)
 		call append(0, "#define " . guard_name)
 		call append(line("$"), "#endif //" . guard_name)
@@ -74,7 +134,7 @@ fun! s:add_brackets(is_class, ...) abort
 	if a:0 == 1
 		let style = a:1
 	else
-		let style = g:bracket_style
+		let style = g:cpp_helper_bracket_style
 	endif
 
 	let cmd = "normal! "
@@ -112,11 +172,11 @@ fun! s:new_line_indent(string, level) abort
 endfun
 
 
-fun! Class(classpath, qt_flavour) abort
+fun! CppHelperClass(classpath, qt_flavour) abort
 	let cwd = getcwd() . "/"
 
 	" check if files for the class are not occupied. May raise an error
-	let exts = [g:header_extension, g:source_extension]
+	let exts = [g:cpp_helper_header_extension, g:cpp_helper_source_extension]
 	if s:check_exists(cwd . a:classpath, exts, "creare class " . a:classpath)
 		echoerr "Could not create class"
 		return
@@ -133,7 +193,7 @@ fun! Class(classpath, qt_flavour) abort
 	" add header file
 
 	" create file: may raise error if buffer is not saved, this is expected
-	exec "edit " . cwd . a:classpath . g:header_extension
+	exec "edit " . cwd . a:classpath . g:cpp_helper_header_extension
 	"remember the buffer for the file
 	let header_buffer = bufnr("%")
 
@@ -157,16 +217,16 @@ fun! Class(classpath, qt_flavour) abort
 	endif
 
 	" add scope markers (does not add private slots and protected members)
-	call s:new_line_indent("private:", g:indented_scope_markers)
+	call s:new_line_indent("private:", g:cpp_helper_scope_marker_indent)
 	normal! o
 	if a:qt_flavour
-		call s:new_line_indent("signals:", g:indented_scope_markers)
+		call s:new_line_indent("signals:", g:cpp_helper_scope_marker_indent)
 		normal! o
-		call s:new_line_indent("public slots:", g:indented_scope_markers)
+		call s:new_line_indent("public slots:", g:cpp_helper_scope_marker_indent)
 		normal! o
-		call s:new_line_indent("public:", g:indented_scope_markers)
+		call s:new_line_indent("public:", g:cpp_helper_scope_marker_indent)
 	else
-		call s:new_line_indent("public:", g:indented_scope_markers)
+		call s:new_line_indent("public:", g:cpp_helper_scope_marker_indent)
 	endif
 
 	"save changes
@@ -176,31 +236,31 @@ fun! Class(classpath, qt_flavour) abort
 	" add object file
 
 	" create file
-	exec "edit " . cwd . a:classpath . g:source_extension
+	exec "edit " . cwd . a:classpath . g:cpp_helper_source_extension
 	"remember the buffer for the file
 	let object_buffer = bufnr("%")
 
 	" include header file
-	exec "normal! a#include \"" . a:classpath . g:header_extension . "\""
+	exec "normal! a#include \"" . a:classpath . g:cpp_helper_header_extension . "\""
 
 	"save chages
 	write
 
-	if g:after_creation == 2
+	if g:cpp_helper_after_creation == 2
 		"return to where we started
 		exec "buffer " . startbuf
 		call setpos(".", startpos)
 
-		if g:wipe_buffers
+		if g:cpp_helper_wipe_buffers
 			exec "bdelete" . header_buffer
 			exec "bdelete" . object_buffer
 		endif
-	elseif g:after_creation == 1
+	elseif g:cpp_helper_after_creation == 1
 		"return to where Description: is written
 		exec "buffer " . descbuf
 		call setpos(".", descpos)
 
-		if g:wipe_buffers
+		if g:cpp_helper_wipe_buffers
 			exec "bdelete" . object_buffer
 		endif
 	endif
@@ -230,14 +290,14 @@ endfun
 
 fun! s:add_declaration(scope, funcarg) abort
 	"find out path to header file: current file full path with correct extension
-	let filename = expand("%:p:r") . g:header_extension
-	exec "edit " . filename
+	let filename = expand("%:p:r") . g:cpp_helper_header_extension
+	call s:open_in_tab(filename)
 
 	let empty = s:find_scope_place(a:scope)
 	if empty
 		exec "normal! o" . a:funcarg . ";"
 	else
-		exec "normal! o" . repeat("\<cr>", g:declaration_offset) . a:funcarg . ";"
+		exec "normal! o" . repeat("\<cr>", g:cpp_helper_declaration_offset) . a:funcarg . ";"
 	endif
 	write
 endfun
@@ -247,8 +307,8 @@ fun! s:add_implementation(return_type, other_declaration) abort
 	"find out the class we're in: file name without extension
 	let classname = expand("%:t:r")
 	"find out path to header file: current file full path with correct extension
-	let filename = expand("%:p:r") . g:source_extension
-	exec "edit " . filename
+	let filename = expand("%:p:r") . g:cpp_helper_source_extension
+	call s:open_in_tab(filename)
 
 	"find the line where last function ends
 	let l = line("$")
@@ -257,7 +317,7 @@ fun! s:add_implementation(return_type, other_declaration) abort
 	call setpos(".", [0, l, 0, 0])
 
 	"add empty implementation
-	exec "normal! o" . repeat("\<cr>", g:implementation_offset)
+	exec "normal! o" . repeat("\<cr>", g:cpp_helper_implementation_offset)
 	if len(a:return_type) != 0
 		exec "normal! a" . a:return_type . " "
 	endif
@@ -270,7 +330,7 @@ fun! s:add_implementation(return_type, other_declaration) abort
 endfun
 
 
-fun! Method(funcarg, scope) abort
+fun! CppHelperMethod(funcarg, scope) abort
 	"                  return type            everything else
 	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
 
@@ -289,7 +349,7 @@ fun! Method(funcarg, scope) abort
 endfun
 
 
-fun! Implement() abort
+fun! CppHelperImplement() abort
 	"             indent   return type            everything else        semicolon
 	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+\|\)' . '\(\k\+\s*(.*\)' . ';'
 
@@ -314,7 +374,7 @@ fun! Implement() abort
 endfun
 
 
-fun! Declare(scope) abort
+fun! CppHelperDeclare(scope) abort
 	"                      return type              class name     everything else
 	let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
 
@@ -338,7 +398,7 @@ fun! s:implement_constructor(funcarg) abort
 endfun
 
 
-fun! Constructor(scope, type, args) abort
+fun! CppHelperConstructor(scope, type, args) abort
 	"classname taken from file name
 	let classname = expand("%:t:r")
 
@@ -361,15 +421,5 @@ fun! Constructor(scope, type, args) abort
 	call s:implement_constructor(funcarg)
 endfun
 
-
-fun! ArgType(funcarg)
-	"                  return type              name                parameters                qualifiers
-	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\)' . '\s*(' . '\([^)]*\)' . ')\s*' . '\(\%(\k\|\s\)*\)'
-
-	let parsed = matchlist(a:funcarg, funcarg_re)
-
-	let return_type = parsed[1]
-	let func_name   = parsed[2]
-	let params      = parsed[3]
-	let qualifiers  = parsed[4]
-endfun
+let &cpo = s:save_cpo
+unlet s:save_cpo
