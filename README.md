@@ -47,6 +47,7 @@ For Qt you can also use commands for slots:
 Warning: these commands are based on regexes so they won't be able to
 recognize really complex c++ constructions, and they can't recognize macros in
 the definition. You shouldn't write code like that anyway they say.
+
 Warning #2: functions returning pointer written like that: `int *foo();` can't
 be recognized either. If you can write the regex for me, please do and send me
 a pull request, your name will forever be remembered by the hearts of
@@ -132,6 +133,3 @@ and between the implementations. Default:
 	let g:cpp_helper_declaration_offset = 1
 	let g:cpp_helper_implementation_offset = 2
 ```
-
-
-vim:tw=78:ts=8:ft=help:norl:
