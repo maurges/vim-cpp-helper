@@ -30,6 +30,9 @@ let g:inclusion_guard_format = "INCLUDED_%s"
 " 1 for true, 0 for bad
 let g:bracket_style = 1
 
+"1 to go to header, 2 to return to where you started
+let g:after_creation = 1
+
 let g:wipe_buffers = 1
 
 " 0 for not indented, else for indented
@@ -120,8 +123,8 @@ fun! Class(classpath, qt_flavour) abort
 	endif
 
 	" remember the current position as we're going to be jumping buffers
-	let cpos = getpos(".")
-	let cbuf = bufnr("%")
+	let startpos = getpos(".")
+	let startbuf = bufnr("%")
 
 	" get class name from path
 	let classname_re = '^\(.*\/\)\?\([^/]\+\)$'
@@ -137,12 +140,21 @@ fun! Class(classpath, qt_flavour) abort
 	call s:add_inclusion_guard(classname)
 
 	" add description to fill
-	exec "normal! o\<cr>// Description: \<c-c>"
+	exec "normal! o// Description: \<c-c>"
+	" remember position of description
+	let descpos = getpos(".")
+	let descbuf = bufnr("%")
 
 	" add class declaration
 	exec "normal! o\<cr>class " . classname
+	if a:qt_flavour
+		exec "normal! a : public QObject"
+	endif
 
 	call s:add_brackets(1)
+	if a:qt_flavour
+		exec "normal! oQ_OBJECT\<cr>"
+	endif
 
 	" add scope markers (does not add private slots and protected members)
 	call s:new_line_indent("private:", g:indented_scope_markers)
@@ -153,10 +165,8 @@ fun! Class(classpath, qt_flavour) abort
 		call s:new_line_indent("public slots:", g:indented_scope_markers)
 		normal! o
 		call s:new_line_indent("public:", g:indented_scope_markers)
-		normal! o
 	else
 		call s:new_line_indent("public:", g:indented_scope_markers)
-		normal! o
 	endif
 
 	"save changes
@@ -171,18 +181,28 @@ fun! Class(classpath, qt_flavour) abort
 	let object_buffer = bufnr("%")
 
 	" include header file
-	exec "normal! O#include \"" . a:classpath . g:header_extension . "\""
+	exec "normal! a#include \"" . a:classpath . g:header_extension . "\""
 
 	"save chages
 	write
 
-	"return to where we started
-	exec "buffer " . cbuf
-	call setpos(".", cpos)
+	if g:after_creation == 2
+		"return to where we started
+		exec "buffer " . startbuf
+		call setpos(".", startpos)
 
-	if g:wipe_buffers
-		exec "bdelete" . header_buffer
-		exec "bdelete" . object_buffer
+		if g:wipe_buffers
+			exec "bdelete" . header_buffer
+			exec "bdelete" . object_buffer
+		endif
+	elseif g:after_creation == 1
+		"return to where Description: is written
+		exec "buffer " . descbuf
+		call setpos(".", descpos)
+
+		if g:wipe_buffers
+			exec "bdelete" . object_buffer
+		endif
 	endif
 endfun
 
@@ -201,17 +221,18 @@ fun! s:find_scope_place(scope_name) abort
 		echoerr "Could not find end of scope: " a:scope_name
 		throw "cpp-helper-error"
 	endif
-	normal! kk
+	let pos = prevnonblank(scope_end-1)
+	call setpos(".", [0, pos, 0, 0])
 
-	return scope_end - scope_begin == 2
+	return pos == scope_begin
 endfun
 
 
 fun! s:add_declaration(scope, funcarg) abort
 	"find out path to header file: current file full path with correct extension
 	let filename = expand("%:p:r") . g:header_extension
-
 	exec "edit " . filename
+
 	let empty = s:find_scope_place(a:scope)
 	if empty
 		exec "normal! o" . a:funcarg . ";"
@@ -236,7 +257,12 @@ fun! s:add_implementation(return_type, other_declaration) abort
 	call setpos(".", [0, l, 0, 0])
 
 	"add empty implementation
-	exec "normal! o" . repeat("\<cr>", g:implementation_offset) . a:return_type . " " . classname . "::" . a:other_declaration . "\<cr>{\<cr>}"
+	exec "normal! o" . repeat("\<cr>", g:implementation_offset)
+	if len(a:return_type) != 0
+		exec "normal! a" . a:return_type . " "
+	endif
+	exec "normal! a" . classname . "::" . a:other_declaration
+	call s:add_brackets(0)
 	write
 
 	"set position to start of function
@@ -264,7 +290,7 @@ endfun
 
 
 fun! Implement() abort
-	"             indent   return type            everything else
+	"             indent   return type            everything else        semicolon
 	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+\|\)' . '\(\k\+\s*(.*\)' . ';'
 
 	let line = getline(line("."))
@@ -277,6 +303,8 @@ fun! Implement() abort
 
 	let return_type = parsed[1]
 	let other       = parsed[2]
+	"remove override from other
+	let other = substitute(other, '\<override\>', "", "")
 
 	if return_type == ''
 		call s:implement_constructor(other)
@@ -306,21 +334,22 @@ endfun
 
 
 fun! s:implement_constructor(funcarg) abort
-
+	call s:add_implementation('', a:funcarg)
 endfun
 
 
 fun! Constructor(scope, type, args) abort
+	"classname taken from file name
 	let classname = expand("%:t:r")
 
 	"write correct argument for declaring and implementing
-	if type == "copy"
+	if a:type == "copy"
 		let args = "const " . classname . "&"
-	elseif type == "move"
+	elseif a:type == "move"
 		let args = classname . "&&"
 	else
 		"take arguments supplied, strip them of braces (why did i do this?)
-		if len(a:args) > 2 && a:args[0] == "(" && a:args[-1:-1] == ")"
+		if len(a:args) >= 2 && a:args[0] == "(" && a:args[-1:-1] == ")"
 			let args = a:args[1:-2]
 		else
 			let args = a:args
