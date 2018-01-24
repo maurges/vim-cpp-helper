@@ -36,8 +36,8 @@ Use to create an empty class and corresponding files:
 Path is used like a system path, it can be global or relative. Most useful
 with relative paths to create classes in the project. As is everywhere in vim,
 the path is relative to your vim cwd set with :cd. The examaple above with vim
-started in the project root would create header and source files classname.h
-and classname.cpp in folder path.
+started in the project root would create header and source files `classname.h`
+and `classname.cpp` in folder `path.`
 
 When you're writing a qt project in vim, it would be useful to create classes
 with qt stuff in them already, and the following command will help you. Use it
@@ -110,7 +110,7 @@ Possible values: 0 for pragma once, 1 for ifndef. Default:
 ```
 
 Use `g:cpp_helper_inclusion_guard_format` with guard flavour set to 1 to set how
-the guard will look. The value is a format string and must contain %s which
+the guard will look. The value is a format string and must contain `%s` which
 will be substituted for the class name. Default value:
 ```
 	let g:cpp_helper_inclusion_guard_format = "INCLUDED_%s"
