@@ -9,6 +9,22 @@ task especially with an architecture requiring a many classes, on its
 shoulders. It provides a handful of commands for various jobs of creating and
 transferring code between files, just what a lazy/sane person needs.
 
+## Installation
+
+Use your favourite plugin manager or just drop all the files into the vim
+folder. Without plugin manager with Linux and Mac:
+```
+git clone https://github.com/d86leader/vim-cpp-helper.git && cp -r vim-cpp-helper/* ~/.vim/
+```
+For Pathogen:
+```
+cd ~/.vim/bundle && git clone https://github.com/d86leader/vim-cpp-helper.git
+```
+For vim-plug and similar, add the following line to your vimrc file after initializing the manager:
+```
+Plug 'd86leader/vim-cpp-helper'
+```
+
 ## Commands
 
 All the functionality of the plugin is in those commands, have a look.
