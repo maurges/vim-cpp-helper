@@ -202,6 +202,11 @@ fun! CppHelperClass(classpath, qt_flavour) abort
 
 	call s:add_inclusion_guard(classname)
 
+	if a:qt_flavour
+		"include the most basic qt thing
+		exec "normal! o#include <QObject>\<CR>"
+	endif
+
 	" add description to fill
 	exec "normal! o// Description: \<c-c>"
 	" remember position of description
