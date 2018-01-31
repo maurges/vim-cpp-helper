@@ -382,6 +382,9 @@ fun! CppHelperImplement() abort
 
 	if return_type == ''
 		call s:implement_constructor(other)
+	elseif return_type == 'explicit'
+		"constructors may start with explicit and we should implement them too
+		call s:implement_constructor(other)
 	else
 		call s:add_implementation(return_type, other)
 	endif
