@@ -367,8 +367,6 @@ fun! CppHelperImplement() abort
 	"             indent   return type            everything else        semicolon
 	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)' . '\(\k\+\s*(.*\)' . ';'
 
-	~classname();
-
 	let line = getline(line("."))
 	let parsed = matchlist(line, func_re)
 
