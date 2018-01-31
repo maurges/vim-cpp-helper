@@ -365,7 +365,9 @@ endfun
 
 fun! CppHelperImplement() abort
 	"             indent   return type            everything else        semicolon
-	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+\|\)' . '\(\k\+\s*(.*\)' . ';'
+	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)' . '\(\k\+\s*(.*\)' . ';'
+
+	~classname();
 
 	let line = getline(line("."))
 	let parsed = matchlist(line, func_re)
@@ -375,12 +377,15 @@ fun! CppHelperImplement() abort
 		throw "cpp-helper-error"
 	endif
 
-	let return_type = parsed[1]
-	let other       = parsed[2]
+	let return_type     = parsed[1]
+	let maybe_destuctor = parsed[2]
+	let other           = parsed[3]
 	"remove override from other
 	let other = substitute(other, '\<override\>', "", "")
 
-	if return_type == ''
+	if maybe_destuctor == '~'
+		call s:implement_destructor(other)
+	elseif return_type == ''
 		call s:implement_constructor(other)
 	elseif return_type == 'explicit'
 		"constructors may start with explicit and we should implement them too
@@ -412,6 +417,11 @@ endfun
 
 fun! s:implement_constructor(funcarg) abort
 	call s:add_implementation('', a:funcarg)
+endfun
+
+
+fun! s:implement_destructor(funcarg) abort
+	call s:add_implementation('', '~'.a:funcarg)
 endfun
 
 
