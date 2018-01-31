@@ -36,6 +36,9 @@ command! -nargs=0 DeclarePublic    :call CppHelperDeclare("public:")
 command! -nargs=0 DeclarePrivate   :call CppHelperDeclare("private:")
 command! -nargs=0 DeclareProtected :call CppHelperDeclare("protected:")
 
+command! -complete=file -nargs=1 EditClass    :call CppHelperEditClass("<args>", 0)
+command! -complete=file -nargs=1 TabEditClass :call CppHelperEditClass("<args>", 1)
+
 
 
 " Setting default variables
@@ -205,6 +208,9 @@ fun! CppHelperClass(classpath, qt_flavour) abort
 	if a:qt_flavour
 		"include the most basic qt thing
 		exec "normal! o#include <QObject>\<CR>"
+		echom "qt flavour"
+	else
+		echom "not qt flavour, its value " a:qt_flavour
 	endif
 
 	" add description to fill
@@ -427,6 +433,18 @@ fun! CppHelperConstructor(scope, type, args) abort
 	let funcarg = classname . "(" . args . ")"
 	call s:add_declaration(a:scope, funcarg)
 	call s:implement_constructor(funcarg)
+endfun
+
+
+fun! CppHelperEditClass(name, in_tab)
+	let basename = substitute(a:name, '\.\w*$', '', '')
+	if a:in_tab
+		exec "tabedit " . basename . g:cpp_helper_header_extension
+		exec "vsplit " . basename . g:cpp_helper_source_extension
+	else
+		exec "edit " . basename . g:cpp_helper_header_extension
+		exec "vsplit " . basename . g:cpp_helper_source_extension
+	endif
 endfun
 
 let &cpo = s:save_cpo
