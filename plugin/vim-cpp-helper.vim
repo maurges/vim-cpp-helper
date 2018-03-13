@@ -1,6 +1,7 @@
 " Description: A collection of commands to create c++ and qt classes less
 " painfully
 " Author: d86leader (d86leader@github.com) 2018-2018
+" License: GNU GPLv2
 
 
 let s:save_cpo = &cpo
