@@ -259,6 +259,23 @@ fun! s:add_implementation(return_type, other_declaration) abort
 endfun
 
 
+" joins the lines starting from linenr until it ends with end_char and comment
+fun! s:joined_declaration_lines(linenr, end_char) abort
+	"               any line          whitespace   comment, stuff, EOL
+	let line_end_re = '^.*' . a:end_char . '\s' . '*\(//.*\|/\*.*\)\?$'
+	" ^.*while\(\/\/\|\/\*\)\?
+
+	let linenr = a:linenr
+	let text = getline(linenr)
+	while text !~ line_end_re
+		let linenr += 1
+		let text .= getline(linenr)
+	endwhile
+
+	return text
+endfun
+
+
 fun! cpp_helper#method(funcarg, scope) abort
 	"                  return type            everything else
 	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
@@ -282,7 +299,8 @@ fun! cpp_helper#implement() abort
 	"             indent   return type            everything else        semicolon
 	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)' . '\(\k\+\s*(.*\)' . ';'
 
-	let line = getline(line("."))
+	" get lines until semicolon
+	let line = s:joined_declaration_lines(line("."), ';')
 	let parsed = matchlist(line, func_re)
 
 	if parsed == []
@@ -335,6 +353,11 @@ endfun
 
 fun! s:implement_destructor(funcarg) abort
 	call s:add_implementation('', '~'.a:funcarg)
+endfun
+
+
+fun! s:fill_q_property() abort
+	
 endfun
 
 
