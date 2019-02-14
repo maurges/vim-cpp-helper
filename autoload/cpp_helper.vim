@@ -387,6 +387,24 @@ fun! s:fill_q_property() abort
 	let resetter = parsed[6]
 	let signal   = parsed[7]
 
+	if member != ""
+		call s:add_declaration('private:', type . ' ' . member)
+	else
+		"we still probably need to declare member. Or not.
+	endif
+	if getter != ""
+		call s:add_declaration('public:', type . ' ' . getter . '() const')
+	endif
+	if setter != ""
+		call s:add_declaration('public:', 'void ' . setter . '(const ' . type . '&)')
+	endif
+	if resetter != ""
+		call s:add_declaration('public:', 'void ' . resetter . '()')
+	endif
+	if signal != ""
+		call s:add_declaration('signals:', 'void ' . signal . '(const ' . type . '&)')
+	endif
+
 	return parsed
 endfun
 
