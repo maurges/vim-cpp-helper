@@ -357,7 +357,37 @@ endfun
 
 
 fun! s:fill_q_property() abort
-	
+	"                     head                type(1)                     name(2)
+	let prop_re  = '\s*Q_PROPERTY(' . '\(\k\+\%(<[^>]*>\)\?' . '\s\+' . '\(\k\+\)'
+	"                         member decl    member name(3)   optional
+	let prop_re .= '\%(\s\+' . 'MEMBER\s\+' . '\(\k\+\)' . '\)\?'
+	"                        read decl      accessor(4)   optional
+	let prop_re .= '\%(\s\+' . 'READ\s\+' . '\(\k\+\)' . '\)\?'
+	"                        write decl      setter(5)   optional
+	let prop_re .= '\%(\s\+' . 'WRITE\s\+' . '\(\k\+\)' . '\)\?'
+	"                        reset decl      resetter(6)   optional
+	let prop_re .= '\%(\s\+' . 'RESET\s\+' . '\(\k\+\)' . '\)\?'
+	"                        notify decl      signal(7)   optional
+	let prop_re .= '\%(\s\+' . 'NOTIFY\s\+' . '\(\k\+\)' . '\)\?'
+
+	" get lines until closing bracket
+	let line = s:joined_declaration_lines(line("."), ')')
+	let parsed = matchlist(line, prop_re)
+
+	if parsed == []
+		echoerr "Could not parse the Q_PROPERTY in the line!"
+		throw "cpp-helper-error"
+	endif
+
+	let type = parsed[1]
+	let name = parsed[2]
+	let member = parsed[3]
+	let getter = parsed[4]
+	let setter = parsed[5]
+	let resetter = parsed[6]
+	let signal   = parsed[7]
+
+	return parsed
 endfun
 
 
