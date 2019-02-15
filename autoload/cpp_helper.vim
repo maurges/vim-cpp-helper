@@ -217,16 +217,27 @@ fun! s:find_scope_place(scope_name) abort
 endfun
 
 
-fun! s:add_declaration(scope, funcarg) abort
+fun! s:add_declaration(scope, ret_type, funcarg) abort
+	let decl = ""
+	if g:cpp_helper_trailing_return_type
+		let decl = "auto " . a:funcarg . " -> " . a:ret_type
+	else
+		let decl = a:ret_type . " " . funcarg
+	endif
+	return s:add_to_scope(a:scope, decl)
+endfun
+
+
+fun! s:add_to_scope(scope, arg) abort
 	"find out path to header file: current file full path with correct extension
 	let filename = expand("%:p:r") . g:cpp_helper_header_extension
 	call s:open_in_tab(filename)
 
 	let empty = s:find_scope_place(a:scope)
 	if empty
-		exec "normal! o" . a:funcarg . ";"
+		exec "normal! o" . a:arg . ";"
 	else
-		exec "normal! o" . repeat("\<cr>", g:cpp_helper_declaration_offset) . a:funcarg . ";"
+		exec "normal! o" . repeat("\<cr>", g:cpp_helper_declaration_offset) . a:arg . ";"
 	endif
 	write
 endfun
@@ -290,7 +301,7 @@ fun! cpp_helper#method(funcarg, scope) abort
 	let return_type = parsed[1]
 	let other       = parsed[2]
 
-	call s:add_declaration(a:scope, a:funcarg)
+	call s:add_declaration(a:scope, return_type, other)
 	call s:add_implementation(return_type, other)
 endfun
 
@@ -342,7 +353,7 @@ fun! cpp_helper#declare(scope) abort
 	let return_type = parsed[1]
 	let other       = parsed[2]
 
-	call s:add_declaration(a:scope, return_type.' '.other)
+	call s:add_declaration(a:scope, return_type, other)
 endfun
 
 
@@ -388,21 +399,21 @@ fun! cpp_helper#fill_q_property() abort
 	let signal   = parsed[7]
 
 	if member != ""
-		call s:add_declaration('private:', type . ' ' . member)
+		call s:add_to_scope('private:', type . ' ' . member)
 	else
 		"we still probably need to declare member. Or not.
 	endif
 	if getter != ""
-		call s:add_declaration('public:', type . ' ' . getter . '() const')
+		call s:add_declaration('public:', type, getter . '() const')
 	endif
 	if setter != ""
-		call s:add_declaration('public:', 'void ' . setter . '(const ' . type . '&)')
+		call s:add_declaration('public:', 'void', setter . '(const ' . type . '&)')
 	endif
 	if resetter != ""
-		call s:add_declaration('public:', 'void ' . resetter . '()')
+		call s:add_declaration('public:', 'void', resetter . '()')
 	endif
 	if signal != ""
-		call s:add_declaration('signals:', 'void ' . signal . '(const ' . type . '&)')
+		call s:add_declaration('signals:', 'void', signal . '(const ' . type . '&)')
 	endif
 
 	return parsed
@@ -428,7 +439,7 @@ fun! cpp_helper#constructor(scope, type, args) abort
 	endif
 
 	let funcarg = classname . "(" . args . ")"
-	call s:add_declaration(a:scope, funcarg)
+	call s:add_to_scope(a:scope, funcarg)
 	call s:implement_constructor(funcarg)
 endfun
 

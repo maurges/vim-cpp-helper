@@ -91,6 +91,12 @@ if !exists('g:cpp_helper_implementation_offset')
 	let g:cpp_helper_implementation_offset = 2
 endif
 
+" whether we declare function with trailing return type or old way
+if !exists('g:cpp_helper_trailing_return_type')
+	let g:cpp_helper_trailing_return_type = 0
+endif
+
+
 
 " Functions
 
