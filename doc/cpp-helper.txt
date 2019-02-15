@@ -123,5 +123,9 @@ and between the implementations. Default: >
 	let g:cpp_helper_declaration_offset = 1
 	let g:cpp_helper_implementation_offset = 2
 
+Use *g:cpp_helper_trailing_return_type* If you are all on board with c++11 and
+want to have your class methods have their return type trailing like this:
+auto f() -> int; Default: >
+	let g:cpp_helper_trailing_return_type = 0
 
 vim:tw=78:ts=8:ft=help:norl:
