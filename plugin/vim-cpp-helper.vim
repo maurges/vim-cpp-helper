@@ -37,6 +37,8 @@ command! -nargs=0 DeclarePublic    :call cpp_helper#declare("public:")
 command! -nargs=0 DeclarePrivate   :call cpp_helper#declare("private:")
 command! -nargs=0 DeclareProtected :call cpp_helper#declare("protected:")
 
+command! -nargs=0 PropertyFill     :call cpp_helper#fill_q_property()
+
 command! -complete=file -nargs=1 EditClass    :call cpp_helper#editClass("<args>", 0)
 command! -complete=file -nargs=1 TabEditClass :call cpp_helper#editClass("<args>", 1)
 

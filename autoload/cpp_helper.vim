@@ -356,9 +356,9 @@ fun! s:implement_destructor(funcarg) abort
 endfun
 
 
-fun! s:fill_q_property() abort
+fun! cpp_helper#fill_q_property() abort
 	"                     head                type(1)                     name(2)
-	let prop_re  = '\s*Q_PROPERTY(' . '\(\k\+\%(<[^>]*>\)\?' . '\s\+' . '\(\k\+\)'
+	let prop_re  = '\s*Q_PROPERTY(' . '\(\k\+\%(<[^>]*>\)\?\)' . '\s\+' . '\(\k\+\)'
 	"                         member decl    member name(3)   optional
 	let prop_re .= '\%(\s\+' . 'MEMBER\s\+' . '\(\k\+\)' . '\)\?'
 	"                        read decl      accessor(4)   optional
