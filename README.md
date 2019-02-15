@@ -94,6 +94,13 @@ and use the following commands to add it to the header:
 	:DeclareProtected
 ```
 
+When you're writing Qt code and you need to create a property, you can write
+`Q_PROPERTY(...)`, then position the cursor on it and run the following command
+to add all function declarations and the member variable to your header:
+```
+	:PropertyFill
+```
+
 ## Options
 
 Use `g:cpp_helper_header_extension` and `g:cpp_helper_source_extension` to set the
