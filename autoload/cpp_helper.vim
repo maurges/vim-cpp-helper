@@ -287,19 +287,44 @@ fun! s:joined_declaration_lines(linenr, end_char) abort
 endfun
 
 
-fun! cpp_helper#method(funcarg, scope) abort
-	"                  return type            everything else
-	let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
-
-	let parsed      = matchlist(a:funcarg, funcarg_re)
-
-	if parsed == []
+" given the array of parsed declaration or implementation by re, return the
+" return type and other arg. This is neccessary as they are on 1 and 2
+" positions depending on whether the return type is trailing or not
+fun! s:args_from_parse(parse) abort
+	if a:parse == []
 		echoerr "Could not parse the function!"
 		throw "cpp-helper-error"
 	endif
 
-	let return_type = parsed[1]
-	let other       = parsed[2]
+	let return_type = ""
+	let other = ""
+
+	if g:cpp_helper_trailing_return_type
+		let return_type = parsed[2]
+		let other       = parsed[1]
+	else
+		let return_type = parsed[1]
+		let other       = parsed[2]
+	endif
+
+	return [return_type, other]
+endfun
+
+
+fun! cpp_helper#method(funcarg, scope) abort
+	let parsed = []
+
+	if g:cpp_helper_trailing_return_type
+		"                                name and args                  return type
+		let funcarg_re = 'auto\s\+ ' . '\(\k\+\s*(.*\)' . '\s*->\s*' . '\([^(]\+\)'
+		let parsed = matchlist(a:funcarg, funcarg_re)
+	else
+		"                  return type            everything else
+		let funcarg_re = '\([^(]\+\)' . '\s\+' . '\(\k\+\s*(.*\)'
+		let parsed = matchlist(a:funcarg, funcarg_re)
+	endif
+
+	let [return_type, other] = s:args_from_parse(parsed)
 
 	call s:add_declaration(a:scope, return_type, other)
 	call s:add_implementation(return_type, other)
@@ -339,19 +364,21 @@ endfun
 
 
 fun! cpp_helper#declare(scope) abort
-	"                      return type              class name     everything else
-	let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
-
+	" TODO: multi-line get
 	let line = getline(line("."))
-	let parsed = matchlist(line, func_re)
+	let func_re = ""
 
-	if parsed == []
-		echoerr "Could not parse the function in the line!"
-		throw "cpp-helper-error"
+	if g:cpp_helper_trailing_return_type
+		"                              class name    everything else                   return type
+		let func_re = '\s*auto\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)' . '\s*->\s*' . '\([^(]\+\)'
+	else
+		"                      return type              class name     everything else
+		let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
 	endif
 
-	let return_type = parsed[1]
-	let other       = parsed[2]
+	let parsed = matchlist(line, func_re)
+
+	let [return_type, other] = s:args_from_parse(parsed)
 
 	call s:add_declaration(a:scope, return_type, other)
 endfun
