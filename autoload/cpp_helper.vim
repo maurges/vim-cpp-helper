@@ -272,30 +272,57 @@ fun! s:get_classname() abort
 	return parsed[1]
 endfun
 
+fun! s:remove_default_args(str) abort
+	return a:str
+endfun
+
 
 fun! s:add_implementation(return_type, other_declaration) abort
 	let classname = s:get_classname()
 	"find out path to header file: current file full path with correct extension
 	let filename = expand("%:p:r") . g:cpp_helper_source_extension
+	"build pattern to delete indent
+	let indent_re = ''
+	if &expandtab
+		let indent_re = '\n' . repeat(' ', indent(line(".")))
+	else
+		" tab after newline
+		let indent_re = '\n	'
+	endif
+	"open new file to edit
 	call s:open_in_tab(filename)
+
+	"clean default arguments
+	let other_declaration = s:remove_default_args(a:other_declaration)
+	"clean excessive indentation
+	let other_declaration = substitute(other_declaration, indent_re, "\n", "g")
 
 	"find the line where last function ends
 	let l = line("$")
 	while getline(l) !~ '}\|#include' | let l -= 1 | endwhile
 	"set position to l, 0 for current buffer
+	"	call setpos(".", [0, l, 0, 0])
+
+	"build declaration line
+	let decl_line = ""
+	if a:return_type != ""
+		let decl_line = a:return_type . " "
+	endif
+	let decl_line .= classname . "::"
+	let other_decl_lines = split(other_declaration, "\n")
+	let decl_line .= other_decl_lines[0]
+	"build lines to append
+	let lines  = repeat([""], g:cpp_helper_implementation_offset)
+	let lines += [decl_line]
+	let lines += other_decl_lines[1:]
+
+	call append(l, lines)
+	let l += len(lines)
+	"set position to start of function
 	call setpos(".", [0, l, 0, 0])
 
-	"add empty implementation
-	exec "normal! o" . repeat("\<cr>", g:cpp_helper_implementation_offset)
-	if len(a:return_type) != 0
-		exec "normal! a" . a:return_type . " "
-	endif
-	exec "normal! a" . classname . "::" . a:other_declaration
 	call s:add_brackets(0)
 	write
-
-	"set position to start of function
-	call setpos(".", [0, l+4, 0, 0])
 endfun
 
 
@@ -310,7 +337,7 @@ fun! s:joined_declaration_lines(linenr, end_char) abort
 	let text = getline(linenr)
 	while text !~ line_end_re && linenr <= last_line
 		let linenr += 1
-		let text .= getline(linenr)
+		let text .= "\n" . getline(linenr)
 	endwhile
 
 	if linenr > last_line
