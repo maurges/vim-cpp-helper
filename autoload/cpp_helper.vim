@@ -262,7 +262,11 @@ fun! s:get_classname() abort
 	let names = []
 	for minlevel_line in minlevel_lines
 		let l = minlevel_line
-		while l > 0 && getline(l) !~ 'class\|struct' | let l -= 1 | endwhile
+		while l > 0 && getline(l) !~ 'class\|struct\|namespace' | let l -= 1 | endwhile
+		if getline(l) =~ 'namespace'
+			"ignore scopes
+			continue
+		endif
 
 		if l <= 0
 			echoerr "Could not find class start!"
@@ -312,7 +316,9 @@ fun! s:add_implementation(return_type, other_declaration) abort
 
 	"find the line where last function ends
 	let l = line("$")
-	while getline(l) !~ '}\|#include' && l > 1 | let l -= 1 | endwhile
+	"                  simple          simple      brace not followed by namespace comment
+	let lastfun_re = '#include' . '\|' . '{' . '\|' . '}\%(\s*//\s*namespace\)\@!'
+	while getline(l) !~ lastfun_re && l > 1 | let l -= 1 | endwhile
 	"set position to l, 0 for current buffer
 	"	call setpos(".", [0, l, 0, 0])
 
@@ -321,7 +327,9 @@ fun! s:add_implementation(return_type, other_declaration) abort
 	if a:return_type != ""
 		let decl_line = a:return_type . " "
 	endif
-	let decl_line .= classname . "::"
+	if classname != ""
+		let decl_line .= classname . "::"
+	endif
 	let other_decl_lines = split(other_declaration, "\n")
 	let decl_line .= other_decl_lines[0]
 	"build lines to append
