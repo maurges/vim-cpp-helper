@@ -4,8 +4,7 @@ A vim plugin to quickly generate c++ headers for you.
 
 ## Intro
 
-This plugin takes the job of creating header+source files, a often boring
-task especially with an architecture requiring a many classes, on its
+This plugin takes the tedious job of creating header+source files on its
 shoulders. It provides a handful of commands for various jobs of creating and
 transferring code between files, just what a lazy/sane person needs.
 
@@ -46,6 +45,12 @@ like the command above:
 	:QClass path/QClassName
 ```
 
+This is the command you would use most often. Position your cursor on a method
+declaration, use it to create an empty implementation in the associated file.
+```
+	:Implement
+```
+
 To create methods use the following commands:
 ```
 	:MethodPublic int my_method(int, std::unique_ptr<float>) override
@@ -65,9 +70,8 @@ recognize really complex c++ constructions, and they can't recognize macros in
 the definition. You shouldn't write code like that anyway they say.
 
 Warning #2: functions returning pointer written like that: `int *foo();` can't
-be recognized either. If you can write the regex for me, please do and send me
-a pull request, your name will forever be remembered by the hearts of
-millions.
+be recognized either, the regex for it is really hard. If you can come up with
+one, please send it to me. ;)
 
 To create constructors you can use the similar commands:
 ```
@@ -78,13 +82,6 @@ To create constructors you can use the similar commands:
 	:ConstructorMove
 ```
 
-When you already have a header written or want to write the header using vim
-power, you can use the following command on the line with declaration of the
-method to start the implementation in the source file:
-```
-	:Implement
-```
-
 When you have already written the implementation but forgot about the header,
 position youself on the first line of the function (where its name is written)
 and use the following commands to add it to the header:
@@ -93,6 +90,9 @@ and use the following commands to add it to the header:
 	:DeclarePrivate
 	:DeclareProtected
 ```
+
+Warning: as of now this doesn't really work when there are multiple classes in
+the header file. To be fixed in the near future...
 
 When you're writing Qt code and you need to create a property, you can write
 `Q_PROPERTY(...)`, then position the cursor on it and run the following command
