@@ -242,31 +242,45 @@ endfun
 
 fun! s:get_classname() abort
 	let l = line(".")
-	" level of {} blocks. When it reaches 0, get the nearest 'class' or 'struct'
-	" declaration as current class name
-	let level = 1
-	while l > 0 && level > 0
+	" level of {} blocks. When it reaches a new minimum, it means we found a new
+	" nested class declaration
+	let level = 0
+	let minlevel = level
+	let minlevel_lines = []
+	while l > 0
 		let l -= 1
 		let cline = getline(l)
 		if cline =~ '{' | let level -= 1 | endif
 		if cline =~ '}' | let level += 1 | endif
+		if level < minlevel
+			let minlevel = level
+			let minlevel_lines += [l]
+		endif
 	endwhile
-	while l > 0 && getline(l) !~ 'class\|struct' | let l -= 1 | endwhile
 
-	if l <= 0
-		echoerr "Could not find class start!"
-		throw "cpp-helper-error"
-	endif
+	" parse a class name at each minimum we found
+	let names = []
+	for minlevel_line in minlevel_lines
+		let l = minlevel_line
+		while l > 0 && getline(l) !~ 'class\|struct' | let l -= 1 | endwhile
 
-	let full_decl = s:joined_declaration_lines(l, '{')
-	"          whitespace      declaration                  name     until end
-	let decl_re = '\s*' . '\%(class\|struct\)' . '\s\+' . '\(\k\+\)' . '.*{'
-	let parsed = matchlist(full_decl, decl_re)
-	if parsed == []
-		echoerr "Could not parse class declaration!"
-		throw "cpp-helper-error"
-	endif
-	return parsed[1]
+		if l <= 0
+			echoerr "Could not find class start!"
+			throw "cpp-helper-error"
+		endif
+
+		let full_decl = s:joined_declaration_lines(l, '{')
+		"          whitespace      declaration                  name     until end
+		let decl_re = '\s*' . '\%(class\|struct\)' . '\s\+' . '\(\k\+\)' . '.*{'
+		let parsed = matchlist(full_decl, decl_re)
+		if parsed == []
+			echoerr "Could not parse class declaration!"
+			throw "cpp-helper-error"
+		endif
+		let names += [parsed[1]]
+	endfor
+
+	return join(reverse(names), "::")
 endfun
 
 fun! s:remove_default_args(str) abort
