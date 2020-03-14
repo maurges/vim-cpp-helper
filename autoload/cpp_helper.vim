@@ -243,9 +243,38 @@ fun! s:add_to_scope(scope, arg) abort
 endfun
 
 
+fun! s:get_classname() abort
+	let l = line(".")
+	" level of {} blocks. When it reaches 0, get the nearest 'class' or 'struct'
+	" declaration as current class name
+	let level = 1
+	while l > 0 && level > 0
+		let l -= 1
+		let cline = getline(l)
+		if cline =~ '{' | let level -= 1 | endif
+		if cline =~ '}' | let level += 1 | endif
+	endwhile
+	while l > 0 && getline(l) !~ 'class\|struct' | let l -= 1 | endwhile
+
+	if l <= 0
+		echoerr "Could not find class start!"
+		throw "cpp-helper-error"
+	endif
+
+	let full_decl = s:joined_declaration_lines(l, '{')
+	"          whitespace      declaration                  name     until end
+	let decl_re = '\s*' . '\%(class\|struct\)' . '\s\+' . '\(\k\+\)' . '.*{'
+	let parsed = matchlist(full_decl, decl_re)
+	if parsed == []
+		echoerr "Could not parse class declaration!"
+		throw "cpp-helper-error"
+	endif
+	return parsed[1]
+endfun
+
+
 fun! s:add_implementation(return_type, other_declaration) abort
-	"find out the class we're in: file name without extension
-	let classname = expand("%:t:r")
+	let classname = s:get_classname()
 	"find out path to header file: current file full path with correct extension
 	let filename = expand("%:p:r") . g:cpp_helper_source_extension
 	call s:open_in_tab(filename)
@@ -277,13 +306,18 @@ fun! s:joined_declaration_lines(linenr, end_char) abort
 	" ^.*while\(\/\/\|\/\*\)\?
 
 	let linenr = a:linenr
+	let last_line = line("$")
 	let text = getline(linenr)
-	while text !~ line_end_re
+	while text !~ line_end_re && linenr <= last_line
 		let linenr += 1
 		let text .= getline(linenr)
 	endwhile
 
-	return text
+	if linenr > last_line
+		return ""
+	else
+		return text
+	endif
 endfun
 
 
@@ -448,8 +482,7 @@ endfun
 
 
 fun! cpp_helper#constructor(scope, type, args) abort
-	"classname taken from file name
-	let classname = expand("%:t:r")
+	let classname = s:get_classname()
 
 	"write correct argument for declaring and implementing
 	if a:type == "copy"
