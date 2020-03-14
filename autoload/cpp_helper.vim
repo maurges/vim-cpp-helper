@@ -123,9 +123,6 @@ fun! cpp_helper#class(classpath, qt_flavour) abort
 	if a:qt_flavour
 		"include the most basic qt thing
 		exec "normal! o#include <QObject>\<CR>"
-		echom "qt flavour"
-	else
-		echom "not qt flavour, its value " a:qt_flavour
 	endif
 
 	" add description to fill
@@ -273,7 +270,9 @@ fun! s:get_classname() abort
 endfun
 
 fun! s:remove_default_args(str) abort
-	return a:str
+	"         after word   after eq     value     delim
+	let arg_re = '\s*' . '='. '\s*' . '.\{-1,\}' . '\([,)]\)'
+	return substitute(a:str, arg_re, '\1', "g")
 endfun
 
 
@@ -299,7 +298,7 @@ fun! s:add_implementation(return_type, other_declaration) abort
 
 	"find the line where last function ends
 	let l = line("$")
-	while getline(l) !~ '}\|#include' | let l -= 1 | endwhile
+	while getline(l) !~ '}\|#include' && l > 1 | let l -= 1 | endwhile
 	"set position to l, 0 for current buffer
 	"	call setpos(".", [0, l, 0, 0])
 
