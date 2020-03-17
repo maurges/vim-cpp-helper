@@ -431,6 +431,8 @@ fun! cpp_helper#implement() abort
 	let other           = parsed[3]
 	"remove override from other
 	let other = substitute(other, '\<override\>', "", "")
+	"remove virtual from return_type
+	let return_type = substitute(return_type, '\<virtual\>\s*', "", "")
 
 	if maybe_destuctor == '~'
 		call s:implement_destructor(other)
