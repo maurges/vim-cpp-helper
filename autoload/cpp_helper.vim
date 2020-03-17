@@ -414,8 +414,10 @@ endfun
 
 
 fun! cpp_helper#implement() abort
-	"             indent   return type            everything else        semicolon
-	let func_re = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)' . '\(\k\+\s*(.*\)' . ';'
+	"              indent      return type               tilde
+	let func_re  = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)'
+	"                         name    or opertaor decl           brackets and inside
+	let func_re .= '\(\%(' . '\k\+' . '\|operator\s*..\?.\?' . '\)\s*(.*' . '\)' . ';'
 
 	" get lines until semicolon
 	let line = s:joined_declaration_lines(line("."), ';')
