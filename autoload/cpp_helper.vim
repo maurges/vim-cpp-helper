@@ -469,11 +469,13 @@ endfun
 
 
 fun! cpp_helper#reimplement() abort
-	if expand("%:e") == g:cpp_helper_header_extension
+	let ext = "." . expand("%:e") 
+	if ext == g:cpp_helper_header_extension
 		call s:reimplement_header()
-	elseif expand("%:e") == g:cpp_helper_source_extension
+	elseif ext == g:cpp_helper_source_extension
 		call s:reimplement_source()
 	else
+		echom "is " . expand("%:e")
 		echoerr "Could not determine module type. Is it not " .
 			\ g:cpp_helper_header_extension . " or " .
 			\ g:cpp_helper_source_extension . "?"
@@ -518,6 +520,24 @@ fun! s:reimplement_header() abort
 	let other = substitute(other, '\<override\>', "", "")
 	"remove virtual from return_type
 	let return_type = substitute(return_type, '\<virtual\>\s*', "", "")
+	let class_name = s:get_classname()
+
+	if return_type == ""
+		echoerr "Reimplementing constructors is not supported."
+			\ . " Please use :Implement and manual deletion"
+		return
+	endif
+
+
+	" find the old function in implementation file by its name
+	let filename = expand("%:p:r") . g:cpp_helper_source_extension
+	call s:open_in_tab(filename)
+	"              ret type (or auto)
+	let search_re = '\s*[^(]\+\s\+' . class_name . '\s*::\s*' . name . '('
+	let g:search_re = search_re
+	let pos = searchpos(search_re)
+	echom "repositioning to " . pos[0] . ":" . pos[1]
+	call cursor(pos)
 endfun
 
 fun! s:reimplement_source() abort
