@@ -7,6 +7,30 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 
+"                       indent      return type
+let s:header_func_re  = '\s*\%(' . '\([^(]\+\)\s\+'
+"                        or tilde   or nothing
+let s:header_func_re .= '\|\(\~\)' . '\|\)'
+"                                 name    or opertaor decl
+let s:header_func_re .= '\(\(' . '\k\+' . '\|operator\s*..\?.\?'
+"                          brackets and inside
+let s:header_func_re .= '\)\s*(.*' . '\)' . ';'
+
+
+let s:source_func_re = ""
+if g:cpp_helper_trailing_return_type
+	"                                   class name
+	let s:source_func_re  = '\s*auto\s\+' . '\k\+\s*::\s*' 
+	"                       everything else                   return type
+	let s:source_func_re .= '\(\k\+\s*(.*\)' . '\s*->\s*' . '\([^{]\+\)\s*\n\s*{'
+else
+	"                                 return type
+	let s:source_func_re  = '\s*' . '\([^(]\+\)' . '\s\+' 
+	"                     class name     everything else
+	let s:source_func_re .= '\k\+\s*::\s*'. '\(\k\+\s*(.*\)\s*\n\s*{'
+endif
+
+
 " go to window containing file in current tab
 " open in current window if it doesnt exist
 fun! s:open_in_tab(name) abort
@@ -219,7 +243,7 @@ fun! s:add_declaration(scope, ret_type, funcarg) abort
 	if g:cpp_helper_trailing_return_type
 		let decl = "auto " . a:funcarg . " -> " . a:ret_type
 	else
-		let decl = a:ret_type . " " . funcarg
+		let decl = a:ret_type . " " . a:funcarg
 	endif
 	return s:add_to_scope(a:scope, decl)
 endfun
@@ -382,11 +406,11 @@ fun! s:args_from_parse(parse) abort
 	let other = ""
 
 	if g:cpp_helper_trailing_return_type
-		let return_type = parsed[2]
-		let other       = parsed[1]
+		let return_type = a:parse[2]
+		let other       = a:parse[1]
 	else
-		let return_type = parsed[1]
-		let other       = parsed[2]
+		let return_type = a:parse[1]
+		let other       = a:parse[2]
 	endif
 
 	return [return_type, other]
@@ -414,14 +438,9 @@ endfun
 
 
 fun! cpp_helper#implement() abort
-	"              indent      return type               tilde
-	let func_re  = '\s*\%(' . '\([^(]\+\)' . '\s\+'. '\|\(\~\)' . '\|\)'
-	"                         name    or opertaor decl           brackets and inside
-	let func_re .= '\(\%(' . '\k\+' . '\|operator\s*..\?.\?' . '\)\s*(.*' . '\)' . ';'
-
 	" get lines until semicolon
 	let line = s:joined_declaration_lines(line("."), ';')
-	let parsed = matchlist(line, func_re)
+	let parsed = matchlist(line, s:header_func_re)
 
 	if parsed == []
 		echoerr "Could not parse the function in the line!"
@@ -462,8 +481,10 @@ fun! cpp_helper#declare(scope) abort
 		let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
 	endif
 
-	let parsed = matchlist(line, func_re)
 
+fun! cpp_helper#declare(scope) abort
+	let line = s:joined_declaration_lines(line("."), '{')
+	let parsed = matchlist(line, s:source_func_re)
 	let [return_type, other] = s:args_from_parse(parsed)
 
 	call s:add_declaration(a:scope, return_type, other)
