@@ -468,18 +468,18 @@ fun! cpp_helper#implement() abort
 endfun
 
 
-fun! cpp_helper#declare(scope) abort
-	" TODO: multi-line get
-	let line = getline(line("."))
-	let func_re = ""
-
-	if g:cpp_helper_trailing_return_type
-		"                              class name    everything else                   return type
-		let func_re = '\s*auto\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)' . '\s*->\s*' . '\([^(]\+\)'
+fun! cpp_helper#reimplement() abort
+	if expand("%:e") == g:cpp_helper_header_extension
+		call s:reimplement_header()
+	elseif expand("%:e") == g:cpp_helper_source_extension
+		call s:reimplement_source()
 	else
-		"                      return type              class name     everything else
-		let func_re = '\s*' . '\([^(]\+\)' . '\s\+' . '\k\+\s*::\s*'. '\(\k\+\s*(.*\)'
+		echoerr "Could not determine module type. Is it not " .
+			\ g:cpp_helper_header_extension . " or " .
+			\ g:cpp_helper_source_extension . "?"
+		throw "cpp-helper-error"
 	endif
+endfun
 
 
 fun! cpp_helper#declare(scope) abort
@@ -498,6 +498,32 @@ endfun
 
 fun! s:implement_destructor(funcarg) abort
 	call s:add_implementation('', '~'.a:funcarg)
+endfun
+
+
+fun! s:reimplement_header() abort
+	let line = s:joined_declaration_lines(line("."), ';')
+	let parsed = matchlist(line, s:header_func_re)
+
+	if parsed == []
+		echoerr "Could not parse the function in the line!"
+		throw "cpp-helper-error"
+	endif
+
+	let return_type     = parsed[1]
+	let maybe_destuctor = parsed[2]
+	let other           = parsed[3]
+	let name            = parsed[4]
+	"remove override from other
+	let other = substitute(other, '\<override\>', "", "")
+	"remove virtual from return_type
+	let return_type = substitute(return_type, '\<virtual\>\s*', "", "")
+endfun
+
+fun! s:reimplement_source() abort
+	let line = s:joined_declaration_lines(line("."), '{')
+	let parsed = matchlist(line, s:source_func_re)
+	let [return_type, other] = s:args_from_parse(parsed)
 endfun
 
 
