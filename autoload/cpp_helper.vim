@@ -454,6 +454,8 @@ fun! cpp_helper#implement() abort
 	let other = substitute(other, '\<override\>', "", "")
 	"remove virtual from return_type
 	let return_type = substitute(return_type, '\<virtual\>\s*', "", "")
+	"remove static from return_type
+	let return_type = substitute(return_type, '\<static\>\s*', "", "")
 
 	if maybe_destuctor == '~'
 		call s:implement_destructor(other)
@@ -520,6 +522,8 @@ fun! s:reimplement_header() abort
 	let other = substitute(other, '\<override\>', "", "")
 	"remove virtual from return_type
 	let return_type = substitute(return_type, '\<virtual\>\s*', "", "")
+	"remove static from return_type
+	let return_type = substitute(return_type, '\<static\>\s*', "", "")
 	let class_name = s:get_classname()
 
 	if return_type == ""
